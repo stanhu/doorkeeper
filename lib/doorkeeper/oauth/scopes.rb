@@ -6,6 +6,8 @@ module Doorkeeper
       include Enumerable
       include Comparable
 
+      DYNAMIC_SCOPE_SUFFIX = ":*"
+
       def self.from_string(string)
         string ||= ""
         new.tap do |scope|
@@ -26,7 +28,16 @@ module Doorkeeper
       end
 
       def exists?(scope)
-        @scopes.include? scope.to_s
+        scope = scope.to_s
+
+        @scopes.any? do |candidate|
+          if candidate.end_with?(DYNAMIC_SCOPE_SUFFIX) && scope.include?(':')
+            prefix = strip_dynamic_scope_suffix(candidate)
+            scope.start_with?("#{prefix}:")
+          else
+            candidate == scope
+          end
+        end
       end
 
       def add(*scopes)
@@ -65,6 +76,12 @@ module Doorkeeper
       end
 
       private
+
+      def strip_dynamic_scope_suffix(scope)
+        return scope unless scope.end_with?(DYNAMIC_SCOPE_SUFFIX)
+
+        scope[0..scope.length - 1 - DYNAMIC_SCOPE_SUFFIX.length]
+      end
 
       def to_array(other)
         case other
